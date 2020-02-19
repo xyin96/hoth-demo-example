@@ -1,5 +1,5 @@
 import * as React from 'react';
-import {FlatList, Text, View, StyleSheet, TouchableOpacity, TextInput} from 'react-native';
+import {KeyboardAvoidingView, FlatList, Text, View, StyleSheet, TouchableOpacity, TextInput} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 
@@ -49,8 +49,8 @@ export default function TodoListScreen() {
   return <TodoListContext.Provider value={dispatch}>
     <FlatList
       data={todos}
-      renderItem={({item}) => <TodoListItem todo={item} />}
-      ListFooterComponent={<TodoListItem />}
+      renderItem={({item}) => <TodoListItem key={item.id} todo={item} />}
+      ListFooterComponent={<TodoListItem key={__id + 1}/>}
     />
   </TodoListContext.Provider>
 }
@@ -103,9 +103,22 @@ function TodoListItem(props) {
 
   return <View style={styles.todoListItemContainer}>
     <View style={styles.todoListItemTextContainer}>
-      {editing
+      {!editing
         ? <Text style={styles.todoListItemTextStyle}>{value}</Text>
-        : <TextInput value={todo.todoMessage} style={styles.todoListItemTextStyle} onChange={setValue} />}
+        : <TextInput
+            autoFocus
+            value={value}
+            style={styles.todoListItemTextStyle}
+            onChangeText={setValue}
+            onSubmitEditing={() => {
+              if (isNewTodo) {
+                dispatch(addTodo(value));
+                setValue('');
+              } else {
+                dispatch(updateTodo({...todo, todoMessage: value}))
+                setEditing(false);
+              }
+            }} />}
     </View>
     {buttons}
   </View>
