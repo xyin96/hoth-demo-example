@@ -9,6 +9,22 @@ import { createStackNavigator } from '@react-navigation/stack';
 import BottomTabNavigator from './navigation/BottomTabNavigator';
 import useLinking from './navigation/useLinking';
 
+import * as firebase from 'firebase';
+
+// Initialize firebase
+var firebaseConfig = {
+  apiKey: "AIzaSyBXcm7HK8F5Qo6IaZOctJu-w8upLuvdlEg",
+  authDomain: "hack-on-the-hill-dryrun.firebaseapp.com",
+  databaseURL: "https://hack-on-the-hill-dryrun.firebaseio.com",
+  projectId: "hack-on-the-hill-dryrun",
+  storageBucket: "hack-on-the-hill-dryrun.appspot.com",
+  messagingSenderId: "250549009390",
+  appId: "1:250549009390:web:061b6bb8e623479166acff",
+  measurementId: "G-Y6Q4GBLXQY"
+};
+
+firebase.initializeApp(firebaseConfig);
+
 const Stack = createStackNavigator();
 
 export default function App(props) {
@@ -25,6 +41,7 @@ export default function App(props) {
 
         // Load our initial navigation state
         setInitialNavigationState(await getInitialState());
+        await firebase.auth().signInAnonymously();
 
         // Load fonts
         await Font.loadAsync({

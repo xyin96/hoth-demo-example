@@ -3,25 +3,27 @@ import {KeyboardAvoidingView, FlatList, Text, View, StyleSheet, TouchableOpacity
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/Colors';
 
+import * as firebase from 'firebase';
+import 'firebase/firestore';
+
 function todoListReducer(state, action) {
   switch (action.type) {
     case 'ADD_TODO':
-      return [...state, action.item];
+      return [...state, {...action.item, id: state.length}];
     case 'UPDATE_TODO':
-      return [...state.filter(todo => todo.id !== action.item.id), action.item];
+      const updatedIndex = state.findIndex(todo => todo.id === action.item.id);
+      return [...state.slice(0, updatedIndex), action.item, ...state.slice(updatedIndex + 1)];
     case 'REMOVE_TODO':
-      return [...state.filter(todo => todo !== action.item)];
+      return [...state.filter(todo => todo.id !== action.item.id)];
     default:
       throw new Error('Unknown Action: ' + action.type);
   }
 }
 
-let __id = 0;
 function addTodo(todo /* string */) {
   return {
     type: 'ADD_TODO',
     item: {
-      id: ++__id,
       todoMessage: todo,
     }
   };
@@ -43,14 +45,54 @@ function removeTodo(item) {
 
 const TodoListContext = React.createContext();
 
+const cache = new Map();
+
+function getUserDocPromise(id) {
+  if (!cache.has(id)) {
+    const promise = firebase.firestore().collection("users").doc(id).get();
+
+    let status = "pending";
+    let result;
+    let suspender = promise.then(
+      r => {
+        status = "success";
+        result = r;
+      },
+      e => {
+        status = "error";
+        result = e;
+      }
+    );
+
+    cache.set(id, {
+      read() {
+        if (status === "pending") {
+          throw suspender;
+        } else if (status === "error") {
+          throw result;
+        } else if (status === "success") {
+          return result;
+        }
+      }
+    });
+}
+    return cache.get(id);
+};
+
 export default function TodoListScreen() {
-  const [todos, dispatch] = React.useReducer(todoListReducer, [{todoMessage: 'hello', id: 0}]);
+  const currentUser = firebase.auth().currentUser;
+  const initialState = getUserDocPromise(currentUser?.uid).read();
+  const [todos, dispatch] = React.useReducer(todoListReducer, initialState.get('todos') ?? []);
+
+  React.useEffect(() => {
+    firebase.firestore().collection("users").doc(currentUser?.uid).set({todos});
+  }, [todos]);
 
   return <TodoListContext.Provider value={dispatch}>
     <FlatList
       data={todos}
-      renderItem={({item}) => <TodoListItem key={item.id} todo={item} />}
-      ListFooterComponent={<TodoListItem key={__id + 1}/>}
+      renderItem={({item}) => <TodoListItem key={item} todo={item} />}
+      ListFooterComponent={<TodoListItem />}
     />
   </TodoListContext.Provider>
 }
